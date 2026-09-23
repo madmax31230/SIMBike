@@ -3,80 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIMBike - 3D Immersion</title>
+    <title>SIMBike - 3D Immersion Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #87CEEB; user-select: none; }
+        body { margin: 0; overflow: hidden; background-color: #5bb3ff; user-select: none; font-family: sans-serif; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; box-sizing: border-box; }
         .interactive { pointer-events: auto; }
-        .glass-panel { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 15px; color: white; }
-        .metric-value { font-size: 2rem; font-weight: bold; line-height: 1.1; }
-        .metric-label { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; }
+        .glass-panel { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px; padding: 15px; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .metric-value { font-size: 2.2rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .metric-label { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; font-weight: 600; }
     </style>
 </head>
 <body>
 
-    <!-- Conteneur 3D -->
     <div id="canvas-container"></div>
 
-    <!-- Interface (HUD) superposée -->
+    <!-- HUD -->
     <div id="ui-layer">
-        <!-- Barre supérieure : Contrôles -->
         <div class="flex justify-between items-start interactive">
             <div class="flex gap-4">
-                <button id="btn-simulate" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded shadow-lg transition">
-                    Simuler Effort
+                <button id="btn-simulate" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition">
+                    🚴 Simuler Effort
                 </button>
-                <button id="btn-reset" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded shadow-lg transition">
+                <button id="btn-reset" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition">
                     Reset
                 </button>
             </div>
-            <button id="btn-connect" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded shadow-lg transition flex items-center gap-2">
+            <button id="btn-connect" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                Connecter PM5
+                PM5 Bluetooth
             </button>
         </div>
 
-        <!-- Tableau de bord central -->
         <div class="flex justify-between items-end pb-4">
-            <!-- Métriques Joueur -->
-            <div class="glass-panel flex flex-col gap-4 min-w-[200px]">
-                <div>
-                    <div class="metric-label text-blue-400">Puissance</div>
-                    <div class="metric-value"><span id="val-watts">0</span> <span class="text-lg font-normal text-gray-400">W</span></div>
-                </div>
-                <div>
-                    <div class="metric-label text-emerald-400">Vitesse (135 kg)</div>
-                    <div class="metric-value"><span id="val-speed">0.0</span> <span class="text-lg font-normal text-gray-400">km/h</span></div>
+            <!-- Joueur -->
+            <div class="glass-panel flex flex-col gap-4 min-w-[220px]">
+                <div class="flex justify-between border-b border-slate-600 pb-2">
+                    <div>
+                        <div class="metric-label text-blue-400">Puissance</div>
+                        <div class="metric-value"><span id="val-watts">0</span><span class="text-base text-gray-400 ml-1">W</span></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="metric-label text-emerald-400">Vitesse</div>
+                        <div class="metric-value"><span id="val-speed">0.0</span><span class="text-base text-gray-400 ml-1">km/h</span></div>
+                    </div>
                 </div>
                 <div class="flex justify-between">
                     <div>
                         <div class="metric-label">Cadence</div>
-                        <div class="text-xl font-bold"><span id="val-rpm">0</span> RPM</div>
+                        <div class="text-xl font-bold"><span id="val-rpm">0</span> rpm</div>
                     </div>
-                    <div>
+                    <div class="text-right">
                         <div class="metric-label">Distance</div>
                         <div class="text-xl font-bold"><span id="val-dist">0</span> m</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tracker de course -->
-            <div class="glass-panel min-w-[250px] border-t-4 border-t-red-500">
-                <div class="flex justify-between items-center mb-2">
-                    <div class="metric-label text-red-400">Bot Lièvre (80 kg)</div>
-                    <div class="text-xs bg-red-900 text-red-100 px-2 py-1 rounded">120 W Constant</div>
+            <!-- Bot Lièvre -->
+            <div class="glass-panel min-w-[260px] border-t-4 border-t-yellow-400">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="font-bold text-yellow-400">Lièvre Virtuel</div>
+                    <div class="text-xs bg-yellow-900 text-yellow-100 px-2 py-1 rounded">120W (80kg)</div>
                 </div>
-                <div class="flex justify-between items-end mt-4">
+                <div class="flex justify-between items-end">
                     <div>
                         <div class="metric-label">Écart</div>
-                        <div class="metric-value text-white"><span id="val-gap">0</span> <span class="text-lg font-normal">m</span></div>
+                        <div class="text-3xl font-bold text-white"><span id="val-gap">0</span><span class="text-base text-gray-400 ml-1">m</span></div>
                     </div>
                     <div class="text-right">
-                        <div class="text-gray-400 text-sm"><span id="val-bot-speed">0.0</span> km/h</div>
-                        <div class="text-gray-400 text-sm"><span id="val-bot-dist">0</span> m</div>
+                        <div class="text-gray-300 font-bold"><span id="val-bot-speed">0.0</span> km/h</div>
+                        <div class="text-gray-400 text-sm"><span id="val-bot-dist">0</span> m par</div>
                     </div>
                 </div>
             </div>
@@ -84,122 +83,167 @@
     </div>
 
     <script>
-        // --- MOTEUR PHYSIQUE & LOGIQUE ---
+        // --- REGLAGES PHYSIQUES ---
         const PLAYER_WEIGHT = 135; 
         const BOT_WEIGHT = 80;
-        const BOT_WATTS = 120; // Réduit pour que l'écart se creuse moins vite
-        const ROL_RESISTANCE = 0.005; 
-        const AERO_DRAG = 0.5; 
-
+        const BOT_WATTS = 120; 
+        
+        let player = { watts: 0, rpm: 0, speed: 0, dist: 0 };
+        let bot = { watts: 0, speed: 0, dist: 0 };
+        let gap = 0; 
         let isSimulating = false;
         let simInterval = null;
 
-        let player = { watts: 0, rpm: 0, speed: 0, dist: 0 };
-        let bot = { watts: 0, speed: 0, dist: 0 };
-        let gap = 0; // Bot_dist - Player_dist
-        
-        // --- 3D ENGINE (Three.js) ---
+        // --- MOTEUR 3D ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // Ciel bleu
-        scene.fog = new THREE.Fog(0x87CEEB, 10, 200); // Brouillard au loin
+        scene.background = new THREE.Color(0x5bb3ff); // Ciel bleu clair
+        scene.fog = new THREE.Fog(0x5bb3ff, 20, 300); // Brouillard dense au loin pour masquer le clipping
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 1.6, 0); // Hauteur des yeux sur le vélo (1m60)
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 500);
+        camera.position.set(0, 1.7, 0); // Vue première personne (Guidon)
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        // Lumière
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
         dirLight.position.set(100, 200, 50);
         scene.add(dirLight);
 
-        // Le sol (Herbe)
+        // --- ENVIRONNEMENT ---
+        // Le Sol
         const planeGeo = new THREE.PlaneGeometry(1000, 1000);
-        const planeMat = new THREE.MeshLambertMaterial({ color: 0x3b82f6 }); // Vert 0x4ade80, mais mettons un bleu gris
-        planeMat.color.setHex(0x2d5a27); // Vert forêt
+        const planeMat = new THREE.MeshLambertMaterial({ color: 0x3d7030 }); // Vert herbe
         const plane = new THREE.Mesh(planeGeo, planeMat);
         plane.rotation.x = -Math.PI / 2;
         scene.add(plane);
 
         // La Route
-        const roadGeo = new THREE.PlaneGeometry(8, 1000);
-        const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const roadGeo = new THREE.PlaneGeometry(7, 1000);
+        const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 }); // Asphalte
         const road = new THREE.Mesh(roadGeo, roadMat);
         road.rotation.x = -Math.PI / 2;
         road.position.y = 0.01;
         scene.add(road);
 
-        // Lignes blanches (défilantes)
-        const lineGeo = new THREE.PlaneGeometry(0.2, 1000);
+        // Génération procédurale du décor (pour l'effet de vitesse)
+        const sceneObjects = [];
+
+        // Lignes blanches centrales (vraies géométries pour éviter l'illusion d'optique)
+        const lineGeo = new THREE.PlaneGeometry(0.15, 3);
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        for(let i=0; i<40; i++) {
+            const line = new THREE.Mesh(lineGeo, lineMat);
+            line.rotation.x = -Math.PI / 2;
+            line.position.set(0, 0.02, -i * 10);
+            scene.add(line);
+            sceneObjects.push({ mesh: line, type: 'line', offset: 10, total: 40 });
+        }
+
+        // Arbres (Cones)
+        const treeGeo = new THREE.ConeGeometry(1.5, 4, 5);
+        const treeMat = new THREE.MeshLambertMaterial({ color: 0x1e4620 });
+        const trunkGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5);
+        const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4a3219 });
         
-        // Création d'une texture rayée procédurale pour l'animation
-        const canvas = document.createElement('canvas');
-        canvas.width = 8; canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#333333'; ctx.fillRect(0,0,8,128);
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,8,64); // Moitié blanc, moitié route
-        
-        const lineTexture = new THREE.CanvasTexture(canvas);
-        lineTexture.wrapS = THREE.RepeatWrapping;
-        lineTexture.wrapT = THREE.RepeatWrapping;
-        lineTexture.repeat.set(1, 100); // Répète la ligne 100 fois sur la longueur
+        for(let i=0; i<60; i++) {
+            const tree = new THREE.Group();
+            const leaves = new THREE.Mesh(treeGeo, treeMat);
+            leaves.position.y = 2.5;
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            trunk.position.y = 0.75;
+            tree.add(leaves, trunk);
+            
+            // Placement aléatoire sur les bords
+            const side = Math.random() > 0.5 ? 1 : -1;
+            const xPos = side * (5 + Math.random() * 10);
+            const zPos = -(Math.random() * 300);
+            tree.position.set(xPos, 0, zPos);
+            
+            scene.add(tree);
+            sceneObjects.push({ mesh: tree, type: 'tree', offset: 300, total: 1 });
+        }
 
-        const lineMat = new THREE.MeshBasicMaterial({ map: lineTexture, transparent: true });
-        const centerLine = new THREE.Mesh(lineGeo, lineMat);
-        centerLine.rotation.x = -Math.PI / 2;
-        centerLine.position.y = 0.02;
-        scene.add(centerLine);
+        // --- CYCLISTE VIRTUEL (BOT) ---
+        function createCyclist() {
+            const group = new THREE.Group();
+            
+            // Roues
+            const wheelGeo = new THREE.TorusGeometry(0.35, 0.04, 8, 24);
+            const wheelMat = new THREE.MeshBasicMaterial({color: 0x111111});
+            const wFront = new THREE.Mesh(wheelGeo, wheelMat); wFront.position.set(0, 0.35, -0.6);
+            const wBack = new THREE.Mesh(wheelGeo, wheelMat); wBack.position.set(0, 0.35, 0.5);
+            
+            // Cadre
+            const frameGeo = new THREE.CylinderGeometry(0.02, 0.02, 1);
+            const frameMat = new THREE.MeshBasicMaterial({color: 0xaaaaaa});
+            const frame = new THREE.Mesh(frameGeo, frameMat);
+            frame.rotation.x = Math.PI/2;
+            frame.position.set(0, 0.35, -0.05);
 
-        // L'adversaire (Bot 3D) - Un simple bloc rouge pour l'instant
-        const botGeo = new THREE.BoxGeometry(0.8, 1.8, 1.5);
-        const botMat = new THREE.MeshLambertMaterial({ color: 0xff3333 });
-        const botMesh = new THREE.Mesh(botGeo, botMat);
-        botMesh.position.set(1.5, 0.9, -10); // Placé un peu sur la droite de la route
-        scene.add(botMesh);
+            // Le Corps (Maillot Jaune)
+            const bodyGroup = new THREE.Group();
+            
+            const torsoGeo = new THREE.BoxGeometry(0.3, 0.5, 0.5);
+            const torsoMat = new THREE.MeshLambertMaterial({color: 0xffd700}); // Jaune
+            const torso = new THREE.Mesh(torsoGeo, torsoMat);
+            torso.position.set(0, 0.9, 0);
+            torso.rotation.x = -0.3; // Penché en avant
 
-        // Redimensionnement de la fenêtre
+            const headGeo = new THREE.SphereGeometry(0.15);
+            const headMat = new THREE.MeshLambertMaterial({color: 0xffccaa});
+            const casqueMat = new THREE.MeshLambertMaterial({color: 0x222222});
+            const head = new THREE.Mesh(headGeo, headMat);
+            const casque = new THREE.Mesh(headGeo, casqueMat);
+            casque.position.y = 0.05; casque.scale.set(1.1, 0.8, 1.1);
+            head.add(casque);
+            head.position.set(0, 1.3, -0.2);
+
+            bodyGroup.add(torso, head);
+            group.add(wFront, wBack, frame, bodyGroup);
+            
+            return { obj: group, body: bodyGroup };
+        }
+
+        const botCyclist = createCyclist();
+        scene.add(botCyclist.obj);
+
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // --- CALCULS PHYSIQUES ---
-        function calculateSpeed(watts, weight) {
-            if (watts <= 0) return Math.max(0, player.speed - 0.2); // Décélération (Inertie)
-            
-            const totalWeight = weight + 9; // Poids cycliste + Poids du vélo
-            const force = watts / Math.max(1, (player.speed || 15) / 3.6); 
-            const resistance = (totalWeight * 9.81 * ROL_RESISTANCE) + (0.5 * 1.2 * AERO_DRAG * Math.pow((player.speed||1) / 3.6, 2));
-            
+        // --- PHYSIQUE & ANIMATION ---
+        const clock = new THREE.Clock();
+
+        function calculateSpeed(watts, weight, currentSpeed) {
+            if (watts <= 0) return Math.max(0, currentSpeed - 0.2); // Inertie
+            const totalWeight = weight + 9; 
+            const force = watts / Math.max(1, (currentSpeed || 15) / 3.6); 
+            const resistance = (totalWeight * 9.81 * 0.004) + (0.5 * 1.2 * 0.4 * Math.pow((currentSpeed||1) / 3.6, 2));
             let acc = (force - resistance) / totalWeight;
-            let newSpeed = (player.speed / 3.6) + (acc * 0.1); 
+            let newSpeed = (currentSpeed / 3.6) + (acc * 0.1); 
             return Math.max(0, newSpeed * 3.6);
         }
 
         function updatePhysics() {
-            // Mise à jour de la vitesse
-            player.speed = calculateSpeed(player.watts, PLAYER_WEIGHT);
+            player.speed = calculateSpeed(player.watts, PLAYER_WEIGHT, player.speed);
             
-            // Le Bot commence à rouler dès que tu as de la vitesse
-            if(player.speed > 0 || bot.speed > 0) {
+            if(player.speed > 2 || bot.speed > 0) {
                 bot.watts = BOT_WATTS;
-                bot.speed = calculateSpeed(bot.watts, BOT_WEIGHT);
+                bot.speed = calculateSpeed(bot.watts, BOT_WEIGHT, bot.speed);
             } else {
-                bot.watts = 0;
-                bot.speed = 0;
+                bot.watts = 0; bot.speed = 0;
             }
 
-            // Distances (Vitesse en km/h divisée par 36000 = distance par 100ms)
             player.dist += (player.speed / 36); 
             bot.dist += (bot.speed / 36);
             gap = bot.dist - player.dist;
 
-            // Mise à jour de l'UI
+            // Maj UI
             document.getElementById('val-watts').innerText = Math.round(player.watts);
             document.getElementById('val-rpm').innerText = player.rpm;
             document.getElementById('val-speed').innerText = player.speed.toFixed(1);
@@ -210,55 +254,74 @@
             
             let gapText = (gap >= 0 ? "+" : "") + Math.round(gap);
             document.getElementById('val-gap').innerText = gapText;
-            document.getElementById('val-gap').className = gap >= 0 ? "text-red-400 font-bold" : "text-emerald-400 font-bold";
-
-            // Animation de la route (Three.js)
-            // On décale la texture de la ligne blanche pour créer l'illusion de vitesse
-            lineTexture.offset.y -= (player.speed / 360);
-
-            // Positionnement 3D du Bot
-            // Si gap est positif, le bot est devant (Z négatif en 3D)
-            // S'il est à plus de 150m, on le cache dans le brouillard
-            botMesh.position.z = -gap;
-            botMesh.visible = (gap > -5 && gap < 180);
+            document.getElementById('val-gap').className = gap >= 0 ? "text-yellow-400 font-bold" : "text-emerald-400 font-bold";
         }
 
-        // Boucle de rendu 3D (60 FPS)
         function animate() {
             requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            // Vitesse du joueur en mètres par seconde
+            const playerSpeedMs = player.speed / 3.6;
+            const distanceMoved = playerSpeedMs * delta;
+
+            // Défilement du décor (Le secret de l'effet de vitesse)
+            // On déplace tous les objets vers la caméra (+Z)
+            sceneObjects.forEach(item => {
+                item.mesh.position.z += distanceMoved;
+                // Si l'objet passe derrière la caméra, on le renvoie loin devant
+                if(item.mesh.position.z > 5) {
+                    item.mesh.position.z -= (item.offset * item.total);
+                }
+            });
+
+            // Positionnement du Bot Lièvre
+            botCyclist.obj.visible = (gap > -2 && gap < 200);
+            if(botCyclist.obj.visible) {
+                // Le bot est placé sur l'axe Z selon l'écart
+                // Si l'écart augmente, il glisse vers l'avant (-Z)
+                // Si l'écart se réduit, il recule vers la caméra
+                botCyclist.obj.position.z = -gap - 2; // -2 pour le garder un peu devant
+                
+                // Animation de pédalage (danseuse)
+                if(bot.speed > 0) {
+                    botCyclist.body.position.y = Math.sin(time * 8) * 0.05;
+                    botCyclist.body.rotation.z = Math.sin(time * 4) * 0.05; // Balancement
+                }
+            }
+
             renderer.render(scene, camera);
         }
+
+        setInterval(updatePhysics, 100);
         animate();
 
-        // Boucle physique (10 fois par seconde)
-        setInterval(updatePhysics, 100);
-
-        // --- CONTRÔLES UI ---
+        // --- CONTROLES ---
         document.getElementById('btn-simulate').addEventListener('click', () => {
             isSimulating = !isSimulating;
             const btn = document.getElementById('btn-simulate');
             if (isSimulating) {
-                btn.innerText = "Arrêter Simulation";
+                btn.innerHTML = "🛑 Stop";
                 btn.classList.replace('bg-emerald-600', 'bg-red-600');
                 btn.classList.replace('hover:bg-emerald-500', 'hover:bg-red-500');
                 simInterval = setInterval(() => {
-                    player.watts = 150 + Math.random() * 50; 
+                    player.watts = 150 + Math.random() * 80; 
                     player.rpm = 75 + Math.floor(Math.random() * 10);
                 }, 1000);
             } else {
-                btn.innerText = "Simuler Effort";
+                btn.innerHTML = "🚴 Simuler Effort";
                 btn.classList.replace('bg-red-600', 'bg-emerald-600');
                 btn.classList.replace('hover:bg-red-500', 'hover:bg-emerald-500');
                 clearInterval(simInterval);
-                player.watts = 0;
-                player.rpm = 0;
+                player.watts = 0; player.rpm = 0;
             }
         });
 
         document.getElementById('btn-reset').addEventListener('click', () => {
             player.dist = 0; player.speed = 0; player.watts = 0; player.rpm = 0;
-            bot.dist = 0; bot.speed = 0; bot.watts = 0;
-            gap = 0;
+            bot.dist = 0; bot.speed = 0; bot.watts = 0; gap = 0;
+            botCyclist.obj.position.z = -2;
         });
 
         // --- BLUETOOTH PM5 ---
@@ -270,21 +333,20 @@
                 const characteristic = await service.getCharacteristic('cycling_power_measurement');
                 
                 await characteristic.startNotifications();
-                document.getElementById('btn-connect').innerText = "PM5 Connecté";
-                document.getElementById('btn-connect').classList.replace('bg-blue-600', 'bg-emerald-600');
+                const btn = document.getElementById('btn-connect');
+                btn.innerText = "PM5 Connecté";
+                btn.classList.replace('bg-blue-600', 'bg-emerald-600');
                 
-                // Si la simulation tournait, on l'arrête pour laisser la place aux vraies données
                 if(isSimulating) document.getElementById('btn-simulate').click();
 
                 characteristic.addEventListener('characteristicvaluechanged', (event) => {
                     const value = event.target.value;
                     player.watts = value.getInt16(2, true);
-                    // Le protocole BLE cycling power contient souvent les RPM, ici on simule la corrélation si non dispo
                     player.rpm = player.watts > 0 ? Math.round(60 + (player.watts / 5)) : 0;
                 });
             } catch (error) {
-                console.error("Erreur Bluetooth:", error);
-                alert("Impossible de se connecter au PM5. Vérifiez qu'il est allumé et en mode 'Sans Fil'.");
+                console.error(error);
+                alert("Erreur Bluetooth avec le PM5.");
             }
         });
     </script>
