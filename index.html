@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIMBike - V7 GLTF Animé</title>
+    <title>SIMBike - V8 Final Animé</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Chargeur pour le modèle 3D externe -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; user-select: none; }
+        body { margin: 0; overflow: hidden; font-family: sans-serif; user-select: none; background: #000; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; box-sizing: border-box; }
         .interactive { pointer-events: auto; }
@@ -50,7 +49,7 @@
         let player = { watts: 0, speed: 0, dist: 0 };
         let bot = { watts: 120, speed: 0, dist: 0 };
         let gap = 0, currentSlope = 0, isRaining = false;
-        let mixer; // Pour l'animation du cycliste 3D
+        let mixer; 
 
         // --- MOTEUR 3D ---
         const scene = new THREE.Scene();
@@ -72,7 +71,7 @@
         sun.castShadow = true;
         scene.add(sun);
 
-        // --- ENVIRONNEMENT (Route PBR et Lignes) ---
+        // --- ENVIRONNEMENT ---
         const roadCanvas = document.createElement('canvas');
         roadCanvas.width = 256; roadCanvas.height = 256;
         const roadCtx = roadCanvas.getContext('2d');
@@ -148,57 +147,40 @@
 
         const loader = new THREE.GLTFLoader();
         loader.load('velo.glb', function (gltf) {
-            const bot3D = gltf.scene;
-            
-            // On le tourne pour qu'il soit de dos s'il fait face à la caméra par défaut
-            bot3D.rotation.y = Math.PI / 2; 
-            
-            // Ajustement de l'échelle (à modifier si le cycliste est trop grand/petit)
-            bot3D.scale.set(0.8, 0.8, 0.8); 
-            bot3D.position.y = 0.02; // Posé sur la route
+            try {
+                const bot3D = gltf.scene;
+                
+                botGroup.clear();
+                
+                // ROTATION A 90 DEGRÉS (Modifie ici avec un moins "-" si jamais il est à l'envers)
+                bot3D.rotation.y = Math.PI / 2; 
+                
+                bot3D.scale.set(0.8, 0.8, 0.8); 
+                bot3D.position.y = 0.02; 
 
-            scene.remove(botGroup); 
-            botGroup = bot3D; 
-            scene.add(botGroup);
-            
-            botGroup.traverse((node) => { 
-                if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } 
-            });
-
-            // --- INTEGRATION DU MODELE GLTF (VELO.GLB) ---
-        let botGroup = new THREE.Group();
-        scene.add(botGroup);
-
-        const loader = new THREE.GLTFLoader();
-        loader.load('velo.glb', function (gltf) {
-            const bot3D = gltf.scene;
-            
-            // 1. On vide le groupe et on pivote le cycliste pour qu'il te tourne le dos
-            botGroup.clear();
-            bot3D.rotation.y = Math.PI / 2; // (Mets -Math.PI / 2 s'il est tourné vers toi)
-            
-            // 2. On ajuste la taille
-            bot3D.scale.set(0.8, 0.8, 0.8); 
-            bot3D.position.y = 0.02; 
-
-            // 3. On place le cycliste dans sa boîte
-            botGroup.add(bot3D);
-            
-            botGroup.traverse((node) => { 
-                if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } 
-            });
-
-            // 4. ON LANCE TOUTES LES ANIMATIONS EN MÊME TEMPS
-            if (gltf.animations && gltf.animations.length > 0) {
-                mixer = new THREE.AnimationMixer(bot3D); // Bien cibler bot3D ici
-                gltf.animations.forEach((clip) => {
-                    mixer.clipAction(clip).play();
+                botGroup.add(bot3D);
+                
+                botGroup.traverse((node) => { 
+                    if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } 
                 });
+
+                // LECTURE DE TOUTES LES ANIMATIONS SIMULTANÉMENT
+                if (gltf.animations && gltf.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(bot3D);
+                    gltf.animations.forEach((clip) => {
+                        mixer.clipAction(clip).play();
+                    });
+                }
+            } catch (err) {
+                console.error("Erreur lors de la configuration du modèle:", err);
             }
         }, undefined, function (error) {
             console.error('Erreur chargement velo.glb:', error);
+            // Fallback (Cube Rouge) si le fichier n'est pas trouvé
+            const fallback = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.6), new THREE.MeshStandardMaterial({color: 0xff0000}));
+            fallback.position.y = 1; botGroup.add(fallback);
         });
-        
+
         // --- MOTEUR PHYSIQUE ---
         function calculateSpeed(watts, weight, currentSpeed, slopePercent) {
             if (watts <= 0) return Math.max(0, currentSpeed - 0.3); 
@@ -230,9 +212,8 @@
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
             
-            // Animation du pédalage calée sur la vitesse
             if (mixer) {
-                // Modifie la vitesse de rotation des jambes du modèle 3D
+                // Le pédalage accélère ou s'arrête en fonction de la vitesse du bot
                 mixer.timeScale = bot.speed > 0 ? (bot.speed / 15) : 0; 
                 mixer.update(delta);
             }
@@ -253,7 +234,7 @@
 
             botGroup.visible = (gap > -2 && gap < 150);
             if(botGroup.visible) {
-                botGroup.position.z = -gap - 3; // Maintenu à -3m devant la caméra pour bien le voir
+                botGroup.position.z = -gap - 3; 
             }
             
             renderer.render(scene, camera);
