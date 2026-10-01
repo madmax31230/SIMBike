@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIMBike - V4 Montagne</title>
+    <title>SIMBike - V5 Tour de France</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -21,11 +21,10 @@
     <div id="canvas-container"></div>
 
     <div id="ui-layer">
-        <!-- Barre supérieure avec Sélection du Parcours -->
         <div class="flex justify-between items-start interactive">
             <div class="flex gap-3">
-                <select id="stage-selector" class="bg-slate-800 text-white font-bold py-2 px-4 rounded-lg shadow-lg border border-slate-600 outline-none focus:border-blue-500">
-                    <option value="0">Prologue Plat (0%)</option>
+                <select id="stage-selector" class="bg-slate-800 text-white font-bold py-2 px-4 rounded-lg shadow-lg border border-slate-600 outline-none focus:border-yellow-400">
+                    <option value="0">Étape de Plaine (0%)</option>
                     <option value="2">Faux-plat montant (2%)</option>
                     <option value="5">Col 2ème Catégorie (5%)</option>
                     <option value="8">Col Hors Catégorie (8%)</option>
@@ -65,7 +64,7 @@
             <!-- HUD Bot -->
             <div class="glass-panel min-w-[240px] border-l-4 border-l-yellow-400">
                 <div class="flex justify-between items-center mb-3">
-                    <div class="font-bold text-yellow-400">Lièvre Virtuel</div>
+                    <div class="font-bold text-yellow-400">Maillot Jaune</div>
                     <div class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">120W / 80kg</div>
                 </div>
                 <div class="flex justify-between items-end">
@@ -90,107 +89,120 @@
         let player = { watts: 0, speed: 0, dist: 0 };
         let bot = { watts: 0, speed: 0, dist: 0 };
         let gap = 0; 
-        let currentSlope = 0; // Pourcentage de la pente
+        let currentSlope = 0; 
 
-        // --- MOTEUR 3D (Lumières, Ombres & Ciel) ---
+        // --- MOTEUR 3D ---
         const scene = new THREE.Scene();
-        // Ciel couleur crépuscule
-        scene.background = new THREE.Color(0xff7e5f); 
-        scene.fog = new THREE.FogExp2(0xff7e5f, 0.015);
+        scene.background = new THREE.Color(0x6eb5ff); // Ciel été
+        scene.fog = new THREE.FogExp2(0x6eb5ff, 0.012);
 
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0, 1.8, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true; // Activation des ombres !
+        renderer.shadowMap.enabled = true; 
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        // Éclairage dramatique
-        const ambientLight = new THREE.AmbientLight(0xffedd5, 0.4);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
         
-        const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+        const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
         sunLight.position.set(50, 100, -50);
         sunLight.castShadow = true;
-        sunLight.shadow.camera.top = 50;
-        sunLight.shadow.camera.bottom = -50;
-        sunLight.shadow.camera.left = -50;
-        sunLight.shadow.camera.right = 50;
+        sunLight.shadow.camera.top = 50; sunLight.shadow.camera.bottom = -50;
+        sunLight.shadow.camera.left = -50; sunLight.shadow.camera.right = 50;
         scene.add(sunLight);
 
         // --- ENVIRONNEMENT ---
-        // Sol
-        const planeGeo = new THREE.PlaneGeometry(1000, 1000);
-        const planeMat = new THREE.MeshStandardMaterial({ color: 0x2d4c1e, roughness: 1 });
-        const plane = new THREE.Mesh(planeGeo, planeMat);
-        plane.rotation.x = -Math.PI / 2;
-        plane.receiveShadow = true;
-        scene.add(plane);
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({ color: 0x41752b, roughness: 1 }));
+        plane.rotation.x = -Math.PI / 2; plane.receiveShadow = true; scene.add(plane);
 
-        // Route
-        const roadGeo = new THREE.PlaneGeometry(8, 1000);
-        const roadMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
-        const road = new THREE.Mesh(roadGeo, roadMat);
-        road.rotation.x = -Math.PI / 2;
-        road.position.y = 0.02;
-        road.receiveShadow = true;
-        scene.add(road);
+        const road = new THREE.Mesh(new THREE.PlaneGeometry(7, 1000), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 }));
+        road.rotation.x = -Math.PI / 2; road.position.y = 0.02; road.receiveShadow = true; scene.add(road);
 
         const sceneObjects = [];
 
-        // Montagnes procédurales au loin
-        const mountMat = new THREE.MeshLambertMaterial({ color: 0x1f2937 });
-        for(let i=0; i<10; i++) {
-            const mountGeo = new THREE.ConeGeometry(40 + Math.random()*50, 60 + Math.random()*80, 4);
-            const mount = new THREE.Mesh(mountGeo, mountMat);
-            const side = Math.random() > 0.5 ? 1 : -1;
-            mount.position.set(side * (50 + Math.random()*100), 0, -200 - Math.random()*100);
-            mount.rotation.y = Math.random();
-            scene.add(mount);
-        }
-
-        // Arbres avec ombres
-        const treeGeo = new THREE.ConeGeometry(1.5, 5, 5);
-        const treeMat = new THREE.MeshStandardMaterial({ color: 0x113311 });
-        const trunkGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5);
-        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3d2314 });
-        
-        for(let i=0; i<40; i++) {
-            const tree = new THREE.Group();
-            const leaves = new THREE.Mesh(treeGeo, treeMat);
-            leaves.position.y = 3;
-            leaves.castShadow = true;
-            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-            trunk.position.y = 0.75;
-            trunk.castShadow = true;
-            tree.add(leaves, trunk);
-            
-            const side = Math.random() > 0.5 ? 1 : -1;
-            tree.position.set(side * (6 + Math.random() * 12), 0, -(Math.random() * 200));
-            scene.add(tree);
-            sceneObjects.push({ mesh: tree, offset: 200, total: 1 });
-        }
-
         // Lignes blanches
-        const lineGeo = new THREE.PlaneGeometry(0.15, 4);
+        const lineGeo = new THREE.PlaneGeometry(0.15, 3);
         const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        for(let i=0; i<20; i++) {
+        for(let i=0; i<30; i++) {
             const line = new THREE.Mesh(lineGeo, lineMat);
             line.rotation.x = -Math.PI / 2;
             line.position.set(0, 0.03, -i * 10);
             scene.add(line);
-            sceneObjects.push({ mesh: line, offset: 10, total: 20 });
+            sceneObjects.push({ mesh: line, offset: 10, total: 30 });
         }
 
-        // --- CYCLISTE VIRTUEL ---
+        // --- ARCHE FLAMME ROUGE ---
+        const archGroup = new THREE.Group();
+        const archMat = new THREE.MeshStandardMaterial({color: 0xcc0000}); // Rouge vif
+        const pillarGeo = new THREE.CylinderGeometry(0.6, 0.6, 7);
+        const p1 = new THREE.Mesh(pillarGeo, archMat); p1.position.set(-4, 3.5, 0); p1.castShadow = true;
+        const p2 = new THREE.Mesh(pillarGeo, archMat); p2.position.set(4, 3.5, 0); p2.castShadow = true;
+        const topGeo = new THREE.CylinderGeometry(0.6, 0.6, 9.2);
+        const p3 = new THREE.Mesh(topGeo, archMat); p3.rotation.z = Math.PI/2; p3.position.set(0, 7, 0); p3.castShadow = true;
+        archGroup.add(p1, p2, p3);
+        archGroup.position.set(0, 0, -200);
+        scene.add(archGroup);
+        sceneObjects.push({ mesh: archGroup, offset: 800, total: 1 }); // Revient tous les 800m
+
+        // --- LA FOULE (SPECTATEURS) ---
+        // Couleurs : Violet (TFC), Bleu Marine/Rouge (Pompiers), Jaune, Pois Rouges, Blanc, Vert
+        const fanColors = [0x4F2E84, 0x111155, 0xcc0000, 0xffd700, 0xffffff, 0x00cc00]; 
+        
+        for(let i=0; i<80; i++) {
+            const specGroup = new THREE.Group();
+            
+            const bodyColor = fanColors[Math.floor(Math.random() * fanColors.length)];
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 0.4), new THREE.MeshStandardMaterial({color: bodyColor}));
+            body.position.y = 0.35; body.castShadow = true;
+            
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshStandardMaterial({color: 0xffccaa}));
+            head.position.y = 0.85; head.castShadow = true;
+            
+            specGroup.add(body, head);
+            
+            // Placement au bord de la route, haie d'honneur resserrée
+            const side = Math.random() > 0.5 ? 1 : -1;
+            specGroup.position.set(side * (3.8 + Math.random() * 2), 0, -(Math.random() * 300));
+            scene.add(specGroup);
+            
+            // Paramètres d'animation de saut
+            sceneObjects.push({ 
+                mesh: specGroup, 
+                type: 'fan', 
+                jumpSpeed: 5 + Math.random() * 8, 
+                phase: Math.random() * Math.PI * 2,
+                offset: 300, 
+                total: 1 
+            });
+        }
+
+        // --- ARBRES ---
+        for(let i=0; i<30; i++) {
+            const tree = new THREE.Group();
+            const leaves = new THREE.Mesh(new THREE.ConeGeometry(1.5, 5, 5), new THREE.MeshStandardMaterial({ color: 0x113311 }));
+            leaves.position.y = 3; leaves.castShadow = true;
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.5), new THREE.MeshStandardMaterial({ color: 0x3d2314 }));
+            trunk.position.y = 0.75; trunk.castShadow = true;
+            tree.add(leaves, trunk);
+            
+            const side = Math.random() > 0.5 ? 1 : -1;
+            tree.position.set(side * (7 + Math.random() * 15), 0, -(Math.random() * 300));
+            scene.add(tree);
+            sceneObjects.push({ mesh: tree, offset: 300, total: 1 });
+        }
+
+        // --- CYCLISTE VIRTUEL (MAILLOT JAUNE) ---
         const botGroup = new THREE.Group();
-        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.6), new THREE.MeshStandardMaterial({color: 0xffd700}));
+        const botBodyMat = new THREE.MeshStandardMaterial({color: 0xffd700}); // Maillot Jaune
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.6), botBodyMat);
         torso.position.set(0, 1.1, 0); torso.castShadow = true;
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshStandardMaterial({color: 0x222222}));
-        head.position.set(0, 1.5, -0.2); head.castShadow = true;
-        botGroup.add(torso, head);
+        const botHead = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshStandardMaterial({color: 0x222222})); // Casque
+        botHead.position.set(0, 1.5, -0.2); botHead.castShadow = true;
+        botGroup.add(torso, botHead);
         scene.add(botGroup);
 
         // --- PHYSIQUE DE LA PENTE ---
@@ -201,13 +213,9 @@
             const speedMs = Math.max(1, currentSpeed / 3.6);
             const force = watts / speedMs; 
             
-            // Résistance au roulement + Aérodynamisme
             let resistance = (totalWeight * 9.81 * 0.004) + (0.5 * 1.2 * 0.4 * Math.pow(speedMs, 2));
-            
-            // LA GRAVITÉ (Le cœur de la difficulté !)
             const slopeAngle = Math.atan(slopePercent / 100);
-            const gravity = totalWeight * 9.81 * Math.sin(slopeAngle);
-            resistance += gravity;
+            resistance += (totalWeight * 9.81 * Math.sin(slopeAngle)); // Gravité
 
             let acc = (force - resistance) / totalWeight;
             let newSpeed = speedMs + (acc * 0.1); 
@@ -218,7 +226,6 @@
             currentSlope = parseFloat(document.getElementById('stage-selector').value);
             document.getElementById('val-slope').innerText = currentSlope;
             
-            // Inclinaison de la caméra pour simuler la pente
             camera.rotation.x = Math.atan(currentSlope / 100) * 0.5;
 
             player.speed = calculateSpeed(player.watts, PLAYER_WEIGHT, player.speed, currentSlope);
@@ -234,7 +241,6 @@
             bot.dist += (bot.speed / 36);
             gap = bot.dist - player.dist;
 
-            // UI
             document.getElementById('val-watts').innerText = Math.round(player.watts);
             document.getElementById('val-speed').innerText = player.speed.toFixed(1);
             document.getElementById('val-dist').innerText = Math.round(player.dist);
@@ -249,20 +255,30 @@
         function animate() {
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
             const playerSpeedMs = player.speed / 3.6;
             
-            // Défilement avec la vitesse
+            // Défilement du décor
             sceneObjects.forEach(item => {
                 item.mesh.position.z += playerSpeedMs * delta;
+                
+                // Animation de la foule (Sauts aléatoires)
+                if(item.type === 'fan') {
+                    // Les fans sautent plus haut si tu roules vite !
+                    const excitement = Math.max(0.2, playerSpeedMs * 0.1);
+                    item.mesh.position.y = Math.abs(Math.sin(time * item.jumpSpeed + item.phase)) * excitement;
+                }
+
+                // Reset de position à l'horizon
                 if(item.mesh.position.z > 5) item.mesh.position.z -= (item.offset * (item.total || 1));
             });
 
-            // Animation du Bot
+            // Animation du Maillot Jaune
             botGroup.visible = (gap > -2 && gap < 150);
             if(botGroup.visible) {
                 botGroup.position.z = -gap - 2;
                 if(bot.speed > 0) {
-                    botGroup.position.y = Math.sin(clock.getElapsedTime() * 8) * 0.05;
+                    botGroup.position.y = Math.sin(time * 8) * 0.05; // Danseuse
                 }
             }
             renderer.render(scene, camera);
@@ -276,7 +292,7 @@
         document.getElementById('btn-simulate').addEventListener('click', (e) => {
             if(!simInterval) {
                 e.target.innerText = "🛑 Stop";
-                simInterval = setInterval(() => { player.watts = 150 + Math.random() * 40; }, 1000);
+                simInterval = setInterval(() => { player.watts = 150 + Math.random() * 60; }, 1000);
             } else {
                 e.target.innerText = "Simuler";
                 clearInterval(simInterval); simInterval = null; player.watts = 0;
