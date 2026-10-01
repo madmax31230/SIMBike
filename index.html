@@ -165,19 +165,40 @@
                 if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } 
             });
 
-            // On récupère et prépare l'animation
+            // --- INTEGRATION DU MODELE GLTF (VELO.GLB) ---
+        let botGroup = new THREE.Group();
+        scene.add(botGroup);
+
+        const loader = new THREE.GLTFLoader();
+        loader.load('velo.glb', function (gltf) {
+            const bot3D = gltf.scene;
+            
+            // 1. On vide le groupe et on pivote le cycliste pour qu'il te tourne le dos
+            botGroup.clear();
+            bot3D.rotation.y = Math.PI / 2; // (Mets -Math.PI / 2 s'il est tourné vers toi)
+            
+            // 2. On ajuste la taille
+            bot3D.scale.set(0.8, 0.8, 0.8); 
+            bot3D.position.y = 0.02; 
+
+            // 3. On place le cycliste dans sa boîte
+            botGroup.add(bot3D);
+            
+            botGroup.traverse((node) => { 
+                if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } 
+            });
+
+            // 4. ON LANCE TOUTES LES ANIMATIONS EN MÊME TEMPS
             if (gltf.animations && gltf.animations.length > 0) {
-                mixer = new THREE.AnimationMixer(botGroup);
-                const action = mixer.clipAction(gltf.animations[0]);
-                action.play();
+                mixer = new THREE.AnimationMixer(bot3D); // Bien cibler bot3D ici
+                gltf.animations.forEach((clip) => {
+                    mixer.clipAction(clip).play();
+                });
             }
         }, undefined, function (error) {
             console.error('Erreur chargement velo.glb:', error);
-            // Fallback si le fichier n'est pas trouvé
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.6), new THREE.MeshStandardMaterial({color: 0xff0000}));
-            torso.position.y = 1; scene.add(torso); botGroup = torso;
         });
-
+        
         // --- MOTEUR PHYSIQUE ---
         function calculateSpeed(watts, weight, currentSpeed, slopePercent) {
             if (watts <= 0) return Math.max(0, currentSpeed - 0.3); 
