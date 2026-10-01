@@ -3,15 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIMBike - V8 Final Animé</title>
+    <title>SIMBike - V9 HUD Badass</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; user-select: none; background: #000; }
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700;900&family=Share+Tech+Mono&display=swap');
+        body { margin: 0; overflow: hidden; font-family: 'Rajdhani', sans-serif; user-select: none; background: #000; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; box-sizing: border-box; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 15px; box-sizing: border-box; }
         .interactive { pointer-events: auto; }
+        
+        /* Styles Badass */
+        .cyber-panel {
+            background: rgba(10, 15, 30, 0.75);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
+            border-radius: 8px;
+            color: white;
+        }
+        .cyber-panel-red {
+            border-color: rgba(255, 50, 50, 0.4);
+            box-shadow: 0 0 15px rgba(255, 50, 50, 0.2);
+        }
+        .data-font { font-family: 'Share Tech Mono', monospace; font-variant-numeric: tabular-nums; }
+        .text-glow-cyan { text-shadow: 0 0 10px rgba(0, 255, 255, 0.8); }
+        .text-glow-red { text-shadow: 0 0 10px rgba(255, 50, 50, 0.8); }
+        
+        /* Jauge de puissance */
+        #power-bar-container { width: 100%; height: 12px; background: #1a202c; border-radius: 6px; overflow: hidden; margin-top: 8px; border: 1px solid #333; }
+        #power-bar { height: 100%; width: 0%; transition: width 0.3s ease, background-color 0.3s ease; }
+        
+        @keyframes pulse-warning { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .warning-anim { animation: pulse-warning 1s infinite; }
     </style>
 </head>
 <body>
@@ -19,33 +44,97 @@
     <div id="canvas-container"></div>
 
     <div id="ui-layer">
-        <div class="flex justify-between items-start interactive">
-            <div class="flex gap-3">
-                <select id="stage-selector" class="bg-slate-800 text-white font-bold py-2 px-4 rounded-lg border border-slate-600 outline-none">
-                    <option value="0">Plaine (0%)</option>
-                    <option value="5">Col (5%)</option>
-                    <option value="8">Col HC (8%)</option>
-                </select>
-                <button id="btn-weather" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition">🌧️ Pluie</button>
-                <button id="btn-simulate" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition">Simuler</button>
+        <!-- TOP HUD : Progression & Contrôles -->
+        <div class="flex justify-between items-start w-full gap-4">
+            <!-- Panneau Étape -->
+            <div class="cyber-panel p-4 flex-1 max-w-xl flex flex-col gap-2">
+                <div class="flex justify-between items-end uppercase text-xs font-bold text-cyan-400 tracking-widest">
+                    <span>Étape Virtuelle</span>
+                    <span id="stage-status">En cours</span>
+                </div>
+                <!-- Barre de progression -->
+                <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-600">
+                    <div id="progress-bar" class="bg-cyan-400 h-full shadow-[0_0_10px_cyan]" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between items-baseline">
+                    <span class="text-gray-400 text-sm">Dist. Restante :</span>
+                    <span class="text-3xl font-black data-font text-white"><span id="val-remain">10.00</span> <span class="text-sm text-cyan-400">KM</span></span>
+                </div>
             </div>
-            <button id="btn-connect" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition flex items-center gap-2">
-                PM5 Connect
-            </button>
+
+            <!-- Contrôles rapides -->
+            <div class="flex flex-col gap-2 interactive items-end">
+                <div class="flex gap-2">
+                    <button id="btn-weather" class="bg-slate-800/80 border border-slate-600 hover:border-cyan-400 text-white text-sm font-bold py-2 px-3 rounded transition">🌧️</button>
+                    <select id="stage-selector" class="bg-slate-800/80 border border-slate-600 text-white text-sm font-bold py-2 px-3 rounded outline-none focus:border-cyan-400">
+                        <option value="0">Plat (0%)</option>
+                        <option value="5">Col (5%)</option>
+                        <option value="8">Col HC (8%)</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btn-simulate" class="bg-emerald-600/80 border border-emerald-400 hover:bg-emerald-500 text-white text-sm font-bold py-2 px-4 rounded transition shadow-[0_0_10px_rgba(16,185,129,0.4)]">TEST SIMU</button>
+                    <button id="btn-connect" class="bg-blue-600/80 border border-blue-400 hover:bg-blue-500 text-white text-sm font-bold py-2 px-4 rounded transition shadow-[0_0_10px_rgba(59,130,246,0.4)]">BLUETOOTH PM5</button>
+                </div>
+            </div>
         </div>
         
-        <div class="flex justify-end items-end pb-2 interactive">
-            <div class="bg-slate-800/80 p-4 rounded-lg border-l-4 border-yellow-400 text-white">
-                <div class="text-xs text-yellow-400 font-bold mb-1">LIÈVRE VIRTUEL (120W)</div>
-                <div>Écart : <span id="val-gap" class="text-2xl font-black">0</span> m</div>
+        <!-- BOTTOM HUD : Télémétrie & Bot -->
+        <div class="flex justify-between items-end w-full">
+            
+            <!-- Télémétrie Joueur Principale -->
+            <div class="cyber-panel p-5 min-w-[300px] flex flex-col gap-3">
+                <div id="slope-warning" class="hidden warning-anim bg-red-900/80 border border-red-500 text-red-200 text-xs font-bold px-2 py-1 rounded text-center uppercase tracking-widest mb-1">
+                    ⚠️ Ascension Détectée
+                </div>
+                
+                <div class="flex justify-between items-end">
+                    <div>
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">Vitesse Absolue</div>
+                        <div class="text-5xl font-black data-font text-white text-glow-cyan"><span id="val-speed">0.0</span></div>
+                    </div>
+                    <div class="text-cyan-400 font-bold mb-1">KM/H</div>
+                </div>
+
+                <div class="border-t border-slate-700 pt-3">
+                    <div class="flex justify-between items-end">
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">Puissance</div>
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">Ratio</div>
+                    </div>
+                    <div class="flex justify-between items-baseline mt-1">
+                        <div class="text-3xl font-black data-font text-white"><span id="val-watts">0</span><span class="text-sm text-gray-400 ml-1">W</span></div>
+                        <div class="text-xl font-bold data-font text-orange-400"><span id="val-wkg">0.00</span><span class="text-xs ml-1">W/kg</span></div>
+                    </div>
+                    <!-- Jauge dynamique -->
+                    <div id="power-bar-container">
+                        <div id="power-bar"></div>
+                    </div>
+                </div>
             </div>
+
+            <!-- Radar du Bot -->
+            <div class="cyber-panel cyber-panel-red p-4 min-w-[220px] flex flex-col items-end text-right">
+                <div class="text-xs font-bold text-red-400 uppercase tracking-widest mb-2 border-b border-red-900/50 pb-1 w-full text-left">
+                    Radar Adversaire
+                </div>
+                <div class="text-sm text-gray-300 font-bold">Maillot Jaune (120W)</div>
+                <div class="text-xs text-gray-500 mb-2">Vitesse: <span id="val-bot-speed" class="data-font">0.0</span> km/h</div>
+                
+                <div class="text-xs font-bold text-gray-400 uppercase">Écart Temps Réel</div>
+                <div class="text-4xl font-black data-font text-white mt-1 text-glow-red">
+                    <span id="val-gap">0</span><span class="text-lg text-red-400 ml-1">m</span>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
-        // --- REGLAGES ET VARIABLES ---
+        // --- CONSTANTES PHYSIQUES ---
         const PLAYER_WEIGHT = 135; 
         const BOT_WEIGHT = 80;
+        const STAGE_LENGTH_M = 10000; // 10 km
+        
         let player = { watts: 0, speed: 0, dist: 0 };
         let bot = { watts: 120, speed: 0, dist: 0 };
         let gap = 0, currentSlope = 0, isRaining = false;
@@ -53,8 +142,8 @@
 
         // --- MOTEUR 3D ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x3a5a78); 
-        scene.fog = new THREE.FogExp2(0x3a5a78, 0.015);
+        scene.background = new THREE.Color(0x1a2a3a); 
+        scene.fog = new THREE.FogExp2(0x1a2a3a, 0.012);
 
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0, 1.8, 0); 
@@ -65,8 +154,8 @@
         renderer.shadowMap.enabled = true;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0x8899aa, 0.6));
-        const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+        scene.add(new THREE.AmbientLight(0x8899aa, 0.4));
+        const sun = new THREE.DirectionalLight(0xffffff, 1);
         sun.position.set(50, 100, -50);
         sun.castShadow = true;
         scene.add(sun);
@@ -77,7 +166,7 @@
         const roadCtx = roadCanvas.getContext('2d');
         for(let i=0; i<256; i+=2) {
             for(let j=0; j<256; j+=2) {
-                const c = Math.floor(Math.random() * 40 + 30);
+                const c = Math.floor(Math.random() * 30 + 20); // Plus sombre pour faire ressortir le HUD
                 roadCtx.fillStyle = `rgb(${c},${c},${c})`;
                 roadCtx.fillRect(i, j, 2, 2);
             }
@@ -88,23 +177,23 @@
 
         const road = new THREE.Mesh(
             new THREE.PlaneGeometry(7, 1000), 
-            new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9, bumpMap: bumpTex, bumpScale: 0.02 })
+            new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9, bumpMap: bumpTex, bumpScale: 0.03 })
         );
         road.rotation.x = -Math.PI / 2; road.position.y = 0.02; road.receiveShadow = true;
         scene.add(road);
 
-        const plane = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({ color: 0x2e4a22 }));
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({ color: 0x1f3018 }));
         plane.rotation.x = -Math.PI / 2; plane.receiveShadow = true; scene.add(plane);
 
         const sceneObjects = [];
-        const lineMat = new THREE.MeshBasicMaterial({ color: 0xdddddd });
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xbbbbbb });
         for(let i=0; i<30; i++) {
             const line = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 3), lineMat);
             line.rotation.x = -Math.PI / 2; line.position.set(0, 0.03, -i * 10);
             scene.add(line); sceneObjects.push({ mesh: line, offset: 10, total: 30 });
         }
 
-        // --- METEO ---
+        // --- PLUIE ---
         const rainCount = 1500;
         const rainGeo = new THREE.BufferGeometry();
         const rainPositions = new Float32Array(rainCount * 3);
@@ -116,74 +205,53 @@
             rainVelocities.push(0.1 + Math.random() * 0.2); 
         }
         rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
-        const rainSystem = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.1, transparent: true, opacity: 0.6 }));
+        const rainSystem = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0x99aaff, size: 0.08, transparent: true, opacity: 0.5 }));
         rainSystem.visible = false;
         camera.add(rainSystem); 
 
-        // --- GPS 3D ---
+        // --- GPS 3D (Minimisé car télémétrie sur le HUD 2D) ---
         const gpsCanvas = document.createElement('canvas');
         gpsCanvas.width = 256; gpsCanvas.height = 128;
         const gpsCtx = gpsCanvas.getContext('2d');
         const gpsTexture = new THREE.CanvasTexture(gpsCanvas);
-
-        const gpsMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.15), new THREE.MeshBasicMaterial({ map: gpsTexture }));
-        gpsMesh.position.set(0, -0.4, -0.6); 
-        gpsMesh.rotation.x = -0.2; 
+        const gpsMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.1), new THREE.MeshBasicMaterial({ map: gpsTexture }));
+        gpsMesh.position.set(0, -0.4, -0.6); gpsMesh.rotation.x = -0.3; 
         camera.add(gpsMesh);
 
         function updateGpsScreen() {
-            gpsCtx.fillStyle = '#111111'; gpsCtx.fillRect(0, 0, 256, 128);
-            gpsCtx.fillStyle = '#00ff00'; gpsCtx.font = 'bold 36px sans-serif';
-            gpsCtx.fillText(`${Math.round(player.watts)} W`, 20, 50);
-            gpsCtx.fillStyle = '#00aaff'; gpsCtx.fillText(`${player.speed.toFixed(1)} km/h`, 20, 100);
-            gpsCtx.fillStyle = '#ff8800'; gpsCtx.font = '20px sans-serif';
-            gpsCtx.fillText(`Dist: ${Math.round(player.dist)} m`, 130, 80);
+            gpsCtx.fillStyle = '#0a0f1e'; gpsCtx.fillRect(0, 0, 256, 128);
+            gpsCtx.fillStyle = '#00ffff'; gpsCtx.font = 'bold 40px sans-serif';
+            gpsCtx.textAlign = 'center';
+            gpsCtx.fillText(`${Math.round(player.watts)}W`, 128, 75);
             gpsTexture.needsUpdate = true; 
         }
 
-        // --- INTEGRATION DU MODELE GLTF (VELO.GLB) ---
+        // --- MODELE GLTF ---
         let botGroup = new THREE.Group();
         scene.add(botGroup);
-
         const loader = new THREE.GLTFLoader();
         loader.load('velo.glb', function (gltf) {
             try {
                 const bot3D = gltf.scene;
-                
                 botGroup.clear();
-                
-                // ROTATION A 90 DEGRÉS (Modifie ici avec un moins "-" si jamais il est à l'envers)
                 bot3D.rotation.y = Math.PI / 2; 
-                
                 bot3D.scale.set(0.8, 0.8, 0.8); 
                 bot3D.position.y = 0.02; 
-
                 botGroup.add(bot3D);
-                
-                botGroup.traverse((node) => { 
-                    if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } 
-                });
-
-                // LECTURE DE TOUTES LES ANIMATIONS SIMULTANÉMENT
+                botGroup.traverse((node) => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
                 if (gltf.animations && gltf.animations.length > 0) {
                     mixer = new THREE.AnimationMixer(bot3D);
-                    gltf.animations.forEach((clip) => {
-                        mixer.clipAction(clip).play();
-                    });
+                    gltf.animations.forEach((clip) => { mixer.clipAction(clip).play(); });
                 }
-            } catch (err) {
-                console.error("Erreur lors de la configuration du modèle:", err);
-            }
-        }, undefined, function (error) {
-            console.error('Erreur chargement velo.glb:', error);
-            // Fallback (Cube Rouge) si le fichier n'est pas trouvé
-            const fallback = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.6), new THREE.MeshStandardMaterial({color: 0xff0000}));
+            } catch (err) {}
+        }, undefined, function () {
+            const fallback = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.6), new THREE.MeshStandardMaterial({color: 0xff3333}));
             fallback.position.y = 1; botGroup.add(fallback);
         });
 
-        // --- MOTEUR PHYSIQUE ---
+        // --- PHYSIQUE & HUD UPDATE ---
         function calculateSpeed(watts, weight, currentSpeed, slopePercent) {
-            if (watts <= 0) return Math.max(0, currentSpeed - 0.3); 
+            if (watts <= 0) return Math.max(0, currentSpeed - 0.4); 
             const speedMs = Math.max(1, currentSpeed / 3.6);
             let resistance = ((weight + 9) * 9.81 * (isRaining ? 0.006 : 0.004)) + (0.5 * 1.2 * 0.4 * Math.pow(speedMs, 2));
             resistance += ((weight + 9) * 9.81 * Math.sin(Math.atan(slopePercent / 100)));
@@ -192,18 +260,59 @@
         }
 
         function updatePhysics() {
-            currentSlope = parseFloat(document.getElementById('stage-selector').value);
+            // Lecture Pente
+            const slopeSelect = document.getElementById('stage-selector').value;
+            currentSlope = parseFloat(slopeSelect);
             camera.rotation.x = Math.atan(currentSlope / 100) * 0.5;
+            
+            // Alerte Visuelle Pente
+            const warningEl = document.getElementById('slope-warning');
+            if(currentSlope > 0) { warningEl.classList.remove('hidden'); warningEl.innerText = `⚠️ ASCENSION : ${currentSlope}%`; }
+            else { warningEl.classList.add('hidden'); }
 
+            // Vitesses
             player.speed = calculateSpeed(player.watts, PLAYER_WEIGHT, player.speed, currentSlope);
             bot.speed = (player.speed > 2 || bot.speed > 0) ? calculateSpeed(bot.watts, BOT_WEIGHT, bot.speed, currentSlope) : 0;
 
+            // Distances
             player.dist += (player.speed / 36); 
             bot.dist += (bot.speed / 36);
             gap = bot.dist - player.dist;
 
-            document.getElementById('val-gap').innerText = (gap >= 0 ? "+" : "") + Math.round(gap);
-            document.getElementById('val-gap').className = gap >= 0 ? "text-2xl font-black text-yellow-400" : "text-2xl font-black text-emerald-400";
+            // --- MAJ DU HUD 2D ---
+            document.getElementById('val-speed').innerText = player.speed.toFixed(1);
+            document.getElementById('val-watts').innerText = Math.round(player.watts);
+            
+            // Calcul W/kg 
+            const wkg = player.watts / PLAYER_WEIGHT;
+            document.getElementById('val-wkg').innerText = wkg.toFixed(2);
+            
+            // Gestion de la jauge de puissance (max arbitraire 400W pour la barre)
+            const powerBar = document.getElementById('power-bar');
+            const powerPercent = Math.min(100, (player.watts / 400) * 100);
+            powerBar.style.width = `${powerPercent}%`;
+            
+            // Changement de couleur dynamique type zone d'effort
+            if(player.watts < 100) powerBar.style.backgroundColor = "#94a3b8"; // Gris/Bleu (Récup)
+            else if(player.watts < 180) powerBar.style.backgroundColor = "#10b981"; // Vert (Endurance)
+            else if(player.watts < 250) powerBar.style.backgroundColor = "#f59e0b"; // Orange (Seuil)
+            else powerBar.style.backgroundColor = "#ef4444"; // Rouge (PMA/Sprint)
+
+            // Ecart Adversaire
+            let gapText = (gap >= 0 ? "+" : "") + Math.round(gap);
+            const gapEl = document.getElementById('val-gap');
+            gapEl.innerText = gapText;
+            gapEl.className = gap >= 0 ? "text-red-400" : "text-emerald-400";
+            document.getElementById('val-bot-speed').innerText = bot.speed.toFixed(1);
+
+            // Distance & Barre de progression
+            let distRemain = (STAGE_LENGTH_M - player.dist) / 1000;
+            if(distRemain <= 0) { distRemain = 0; document.getElementById('stage-status').innerText = "TERMINE"; }
+            document.getElementById('val-remain').innerText = distRemain.toFixed(2);
+            
+            const progressPercent = Math.min(100, (player.dist / STAGE_LENGTH_M) * 100);
+            document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+
             updateGpsScreen(); 
         }
 
@@ -213,7 +322,6 @@
             const delta = clock.getDelta();
             
             if (mixer) {
-                // Le pédalage accélère ou s'arrête en fonction de la vitesse du bot
                 mixer.timeScale = bot.speed > 0 ? (bot.speed / 15) : 0; 
                 mixer.update(delta);
             }
@@ -233,9 +341,7 @@
             }
 
             botGroup.visible = (gap > -2 && gap < 150);
-            if(botGroup.visible) {
-                botGroup.position.z = -gap - 3; 
-            }
+            if(botGroup.visible) botGroup.position.z = -gap - 3; 
             
             renderer.render(scene, camera);
         }
@@ -245,15 +351,20 @@
         document.getElementById('btn-weather').addEventListener('click', (e) => {
             isRaining = !isRaining;
             rainSystem.visible = isRaining;
-            scene.background = new THREE.Color(isRaining ? 0x223344 : 0x3a5a78); 
-            e.target.innerText = isRaining ? "☀️ Soleil" : "🌧 Pluie";
+            scene.background = new THREE.Color(isRaining ? 0x111111 : 0x1a2a3a); 
         });
 
         let simInterval;
         document.getElementById('btn-simulate').addEventListener('click', (e) => {
             if(!simInterval) {
-                simInterval = setInterval(() => { player.watts = 150 + Math.random() * 60; }, 1000);
+                e.target.innerText = "🛑 STOP SIMU";
+                e.target.classList.replace('bg-emerald-600/80', 'bg-red-600/80');
+                e.target.classList.replace('border-emerald-400', 'border-red-400');
+                simInterval = setInterval(() => { player.watts = 150 + Math.random() * 80; }, 1000);
             } else {
+                e.target.innerText = "TEST SIMU";
+                e.target.classList.replace('bg-red-600/80', 'bg-emerald-600/80');
+                e.target.classList.replace('border-red-400', 'border-emerald-400');
                 clearInterval(simInterval); simInterval = null; player.watts = 0;
             }
         });
@@ -264,7 +375,8 @@
                 const server = await device.gatt.connect();
                 const char = await (await server.getPrimaryService('cycling_power')).getCharacteristic('cycling_power_measurement');
                 await char.startNotifications();
-                e.target.innerText = "PM5 OK"; e.target.classList.replace('bg-blue-600', 'bg-emerald-600');
+                e.target.innerText = "⚡ PM5 CONNECTÉ"; e.target.classList.replace('bg-blue-600/80', 'bg-emerald-600/80');
+                e.target.classList.replace('border-blue-400', 'border-emerald-400');
                 char.addEventListener('characteristicvaluechanged', (evt) => { player.watts = evt.target.value.getInt16(2, true); });
             } catch (err) {}
         });
