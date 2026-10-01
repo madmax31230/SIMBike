@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIMBike - V5 Tour de France</title>
+    <title>SIMBike - V6 Moteur Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Moteur principal Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Module pour charger les vrais modèles 3D (.glb / .gltf) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; user-select: none; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; box-sizing: border-box; }
         .interactive { pointer-events: auto; }
-        .glass-panel { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 15px; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .metric-value { font-size: 2.2rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
-        .metric-label { font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; font-weight: 700; letter-spacing: 1px; margin-bottom: 2px;}
+        /* Interface allégée, le reste est dans la 3D */
     </style>
 </head>
 <body>
@@ -23,232 +24,188 @@
     <div id="ui-layer">
         <div class="flex justify-between items-start interactive">
             <div class="flex gap-3">
-                <select id="stage-selector" class="bg-slate-800 text-white font-bold py-2 px-4 rounded-lg shadow-lg border border-slate-600 outline-none focus:border-yellow-400">
-                    <option value="0">Étape de Plaine (0%)</option>
-                    <option value="2">Faux-plat montant (2%)</option>
-                    <option value="5">Col 2ème Catégorie (5%)</option>
-                    <option value="8">Col Hors Catégorie (8%)</option>
+                <select id="stage-selector" class="bg-slate-800 text-white font-bold py-2 px-4 rounded-lg border border-slate-600 outline-none">
+                    <option value="0">Plaine (0%)</option>
+                    <option value="5">Col (5%)</option>
+                    <option value="8">Col HC (8%)</option>
                 </select>
-                <button id="btn-simulate" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition">Simuler</button>
+                <button id="btn-weather" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg transition">🌧️ Pluie</button>
+                <button id="btn-simulate" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition">Simuler</button>
             </div>
-            <button id="btn-connect" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg shadow-lg transition flex items-center gap-2">
-                PM5 Connect
-            </button>
+            <button id="btn-connect" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition">PM5 Connect</button>
         </div>
-
-        <div class="flex justify-between items-end pb-2">
-            <!-- HUD Joueur -->
-            <div class="glass-panel min-w-[240px]">
-                <div class="flex justify-between border-b border-slate-700 pb-3 mb-3">
-                    <div>
-                        <div class="metric-label text-blue-400">Watts (Toi)</div>
-                        <div class="metric-value"><span id="val-watts">0</span></div>
-                    </div>
-                    <div class="text-right">
-                        <div class="metric-label text-emerald-400">Vitesse</div>
-                        <div class="metric-value"><span id="val-speed">0.0</span><span class="text-sm text-gray-400 ml-1">km/h</span></div>
-                    </div>
-                </div>
-                <div class="flex justify-between">
-                    <div>
-                        <div class="metric-label">Pente Active</div>
-                        <div class="text-xl font-bold text-orange-400"><span id="val-slope">0</span> %</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="metric-label">Distance</div>
-                        <div class="text-xl font-bold"><span id="val-dist">0</span> m</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- HUD Bot -->
-            <div class="glass-panel min-w-[240px] border-l-4 border-l-yellow-400">
-                <div class="flex justify-between items-center mb-3">
-                    <div class="font-bold text-yellow-400">Maillot Jaune</div>
-                    <div class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">120W / 80kg</div>
-                </div>
-                <div class="flex justify-between items-end">
-                    <div>
-                        <div class="metric-label">Écart</div>
-                        <div class="text-3xl font-black text-white"><span id="val-gap">0</span><span class="text-sm text-gray-400 ml-1">m</span></div>
-                    </div>
-                    <div class="text-right text-gray-300 font-bold">
-                        <span id="val-bot-speed">0.0</span> km/h
-                    </div>
-                </div>
+        
+        <!-- UI HTML minimale pour le Bot (l'UI joueur est sur le guidon 3D) -->
+        <div class="flex justify-end items-end pb-2 interactive">
+            <div class="bg-slate-800/80 p-4 rounded-lg border-l-4 border-yellow-400 text-white">
+                <div class="text-xs text-yellow-400 font-bold mb-1">LIÈVRE VIRTUEL (120W)</div>
+                <div>Écart : <span id="val-gap" class="text-2xl font-black">0</span> m</div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- PHYSIQUE & CONSTANTES ---
         const PLAYER_WEIGHT = 135; 
         const BOT_WEIGHT = 80;
-        const BOT_WATTS = 120;
-        
         let player = { watts: 0, speed: 0, dist: 0 };
-        let bot = { watts: 0, speed: 0, dist: 0 };
-        let gap = 0; 
-        let currentSlope = 0; 
+        let bot = { watts: 120, speed: 0, dist: 0 };
+        let gap = 0, currentSlope = 0, isRaining = false;
 
-        // --- MOTEUR 3D ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x6eb5ff); // Ciel été
-        scene.fog = new THREE.FogExp2(0x6eb5ff, 0.012);
+        scene.background = new THREE.Color(0x3a5a78); // Ciel orageux
+        scene.fog = new THREE.FogExp2(0x3a5a78, 0.015);
 
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 1.8, 0);
+        camera.position.set(0, 1.8, 0); // Position de la tête
+        scene.add(camera); // Requis car le GPS est attaché à la caméra
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true; 
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.enabled = true;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-        
-        const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        sunLight.position.set(50, 100, -50);
-        sunLight.castShadow = true;
-        sunLight.shadow.camera.top = 50; sunLight.shadow.camera.bottom = -50;
-        sunLight.shadow.camera.left = -50; sunLight.shadow.camera.right = 50;
-        scene.add(sunLight);
+        // Lumières
+        scene.add(new THREE.AmbientLight(0x8899aa, 0.6));
+        const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+        sun.position.set(50, 100, -50);
+        sun.castShadow = true;
+        scene.add(sun);
 
-        // --- ENVIRONNEMENT ---
-        const plane = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({ color: 0x41752b, roughness: 1 }));
+        // --- DEFI 4 : BITUME PBR (Génération procédurale du grain) ---
+        const roadCanvas = document.createElement('canvas');
+        roadCanvas.width = 256; roadCanvas.height = 256;
+        const roadCtx = roadCanvas.getContext('2d');
+        for(let i=0; i<256; i+=2) {
+            for(let j=0; j<256; j+=2) {
+                const c = Math.floor(Math.random() * 40 + 30);
+                roadCtx.fillStyle = `rgb(${c},${c},${c})`;
+                roadCtx.fillRect(i, j, 2, 2);
+            }
+        }
+        const bumpTex = new THREE.CanvasTexture(roadCanvas);
+        bumpTex.wrapS = THREE.RepeatWrapping; bumpTex.wrapT = THREE.RepeatWrapping;
+        bumpTex.repeat.set(4, 100);
+
+        const roadMat = new THREE.MeshStandardMaterial({ 
+            color: 0x444444, roughness: 0.9, bumpMap: bumpTex, bumpScale: 0.02 
+        });
+        const road = new THREE.Mesh(new THREE.PlaneGeometry(7, 1000), roadMat);
+        road.rotation.x = -Math.PI / 2; road.position.y = 0.02; road.receiveShadow = true;
+        scene.add(road);
+
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({ color: 0x2e4a22 }));
         plane.rotation.x = -Math.PI / 2; plane.receiveShadow = true; scene.add(plane);
 
-        const road = new THREE.Mesh(new THREE.PlaneGeometry(7, 1000), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 }));
-        road.rotation.x = -Math.PI / 2; road.position.y = 0.02; road.receiveShadow = true; scene.add(road);
-
         const sceneObjects = [];
-
-        // Lignes blanches
         const lineGeo = new THREE.PlaneGeometry(0.15, 3);
-        const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xdddddd });
         for(let i=0; i<30; i++) {
             const line = new THREE.Mesh(lineGeo, lineMat);
-            line.rotation.x = -Math.PI / 2;
-            line.position.set(0, 0.03, -i * 10);
-            scene.add(line);
-            sceneObjects.push({ mesh: line, offset: 10, total: 30 });
+            line.rotation.x = -Math.PI / 2; line.position.set(0, 0.03, -i * 10);
+            scene.add(line); sceneObjects.push({ mesh: line, offset: 10, total: 30 });
         }
 
-        // --- ARCHE FLAMME ROUGE ---
-        const archGroup = new THREE.Group();
-        const archMat = new THREE.MeshStandardMaterial({color: 0xcc0000}); // Rouge vif
-        const pillarGeo = new THREE.CylinderGeometry(0.6, 0.6, 7);
-        const p1 = new THREE.Mesh(pillarGeo, archMat); p1.position.set(-4, 3.5, 0); p1.castShadow = true;
-        const p2 = new THREE.Mesh(pillarGeo, archMat); p2.position.set(4, 3.5, 0); p2.castShadow = true;
-        const topGeo = new THREE.CylinderGeometry(0.6, 0.6, 9.2);
-        const p3 = new THREE.Mesh(topGeo, archMat); p3.rotation.z = Math.PI/2; p3.position.set(0, 7, 0); p3.castShadow = true;
-        archGroup.add(p1, p2, p3);
-        archGroup.position.set(0, 0, -200);
-        scene.add(archGroup);
-        sceneObjects.push({ mesh: archGroup, offset: 800, total: 1 }); // Revient tous les 800m
+        // --- DEFI 2 : LE SYSTÈME MÉTÉO (PLUIE) ---
+        const rainCount = 1500;
+        const rainGeo = new THREE.BufferGeometry();
+        const rainPositions = new Float32Array(rainCount * 3);
+        const rainVelocities = [];
+        for(let i=0;i<rainCount;i++) {
+            rainPositions[i*3] = (Math.random() - 0.5) * 20; // X (Largeur route)
+            rainPositions[i*3+1] = Math.random() * 20; // Y (Hauteur)
+            rainPositions[i*3+2] = (Math.random() - 0.5) * 40 - 10; // Z (Profondeur)
+            rainVelocities.push(0.1 + Math.random() * 0.2); // Vitesse de chute
+        }
+        rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+        const rainMat = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.1, transparent: true, opacity: 0.6 });
+        const rainSystem = new THREE.Points(rainGeo, rainMat);
+        rainSystem.visible = false;
+        camera.add(rainSystem); // La pluie suit la caméra !
 
-        // --- LA FOULE (SPECTATEURS) ---
-        // Couleurs : Violet (TFC), Bleu Marine/Rouge (Pompiers), Jaune, Pois Rouges, Blanc, Vert
-        const fanColors = [0x4F2E84, 0x111155, 0xcc0000, 0xffd700, 0xffffff, 0x00cc00]; 
-        
-        for(let i=0; i<80; i++) {
-            const specGroup = new THREE.Group();
-            
-            const bodyColor = fanColors[Math.floor(Math.random() * fanColors.length)];
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 0.4), new THREE.MeshStandardMaterial({color: bodyColor}));
-            body.position.y = 0.35; body.castShadow = true;
-            
-            const head = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshStandardMaterial({color: 0xffccaa}));
-            head.position.y = 0.85; head.castShadow = true;
-            
-            specGroup.add(body, head);
-            
-            // Placement au bord de la route, haie d'honneur resserrée
-            const side = Math.random() > 0.5 ? 1 : -1;
-            specGroup.position.set(side * (3.8 + Math.random() * 2), 0, -(Math.random() * 300));
-            scene.add(specGroup);
-            
-            // Paramètres d'animation de saut
-            sceneObjects.push({ 
-                mesh: specGroup, 
-                type: 'fan', 
-                jumpSpeed: 5 + Math.random() * 8, 
-                phase: Math.random() * Math.PI * 2,
-                offset: 300, 
-                total: 1 
-            });
+        // --- DEFI 3 : L'INTERFACE DIÉGÉTIQUE (Le Compteur GPS 3D) ---
+        const gpsCanvas = document.createElement('canvas');
+        gpsCanvas.width = 256; gpsCanvas.height = 128;
+        const gpsCtx = gpsCanvas.getContext('2d');
+        const gpsTexture = new THREE.CanvasTexture(gpsCanvas);
+
+        const gpsMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.3, 0.15),
+            new THREE.MeshBasicMaterial({ map: gpsTexture })
+        );
+        // On attache le compteur virtuellement au guidon, devant la caméra
+        gpsMesh.position.set(0, -0.4, -0.6); 
+        gpsMesh.rotation.x = -0.2; // Légèrement incliné vers le visage
+        camera.add(gpsMesh);
+
+        function updateGpsScreen() {
+            gpsCtx.fillStyle = '#111111'; // Fond de l'écran
+            gpsCtx.fillRect(0, 0, 256, 128);
+            gpsCtx.fillStyle = '#00ff00'; // Texte vert fluo
+            gpsCtx.font = 'bold 36px sans-serif';
+            gpsCtx.fillText(`${Math.round(player.watts)} W`, 20, 50);
+            gpsCtx.fillStyle = '#00aaff';
+            gpsCtx.fillText(`${player.speed.toFixed(1)} km/h`, 20, 100);
+            gpsCtx.fillStyle = '#ff8800';
+            gpsCtx.font = '20px sans-serif';
+            gpsCtx.fillText(`Dist: ${Math.round(player.dist)} m`, 130, 80);
+            gpsTexture.needsUpdate = true; // Demande à Three.js de rafraîchir l'écran 3D
         }
 
-        // --- ARBRES ---
-        for(let i=0; i<30; i++) {
-            const tree = new THREE.Group();
-            const leaves = new THREE.Mesh(new THREE.ConeGeometry(1.5, 5, 5), new THREE.MeshStandardMaterial({ color: 0x113311 }));
-            leaves.position.y = 3; leaves.castShadow = true;
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.5), new THREE.MeshStandardMaterial({ color: 0x3d2314 }));
-            trunk.position.y = 0.75; trunk.castShadow = true;
-            tree.add(leaves, trunk);
-            
-            const side = Math.random() > 0.5 ? 1 : -1;
-            tree.position.set(side * (7 + Math.random() * 15), 0, -(Math.random() * 300));
-            scene.add(tree);
-            sceneObjects.push({ mesh: tree, offset: 300, total: 1 });
-        }
-
-        // --- CYCLISTE VIRTUEL (MAILLOT JAUNE) ---
+        // --- DEFI 1 : PREPARATION GLTF (LE VRAI VELO) ---
         const botGroup = new THREE.Group();
-        const botBodyMat = new THREE.MeshStandardMaterial({color: 0xffd700}); // Maillot Jaune
-        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.6), botBodyMat);
+        // Fallback géométrique actuel :
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.6), new THREE.MeshStandardMaterial({color: 0xffd700}));
         torso.position.set(0, 1.1, 0); torso.castShadow = true;
-        const botHead = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshStandardMaterial({color: 0x222222})); // Casque
-        botHead.position.set(0, 1.5, -0.2); botHead.castShadow = true;
-        botGroup.add(torso, botHead);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshStandardMaterial({color: 0x222222}));
+        head.position.set(0, 1.5, -0.2); head.castShadow = true;
+        botGroup.add(torso, head);
         scene.add(botGroup);
 
-        // --- PHYSIQUE DE LA PENTE ---
+        /* 
+        // --- CODE POUR CHARGER TON FICHIER .glb ---
+        // Quand tu auras uploadé "velo.glb" sur GitHub, décommente ceci :
+        const loader = new THREE.GLTFLoader();
+        loader.load('velo.glb', function (gltf) {
+            const bot3D = gltf.scene;
+            bot3D.scale.set(1, 1, 1); // Ajuste la taille si besoin
+            
+            // On enlève le bot géométrique moche
+            scene.remove(botGroup); 
+            
+            // On ajoute ton beau modèle
+            botGroup = bot3D; 
+            scene.add(botGroup);
+            
+            // Permet aux ombres de fonctionner sur le modèle
+            botGroup.traverse((node) => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
+        });
+        */
+
+        // --- PHYSIQUE ---
         function calculateSpeed(watts, weight, currentSpeed, slopePercent) {
             if (watts <= 0) return Math.max(0, currentSpeed - 0.3); 
-            
-            const totalWeight = weight + 9; 
             const speedMs = Math.max(1, currentSpeed / 3.6);
-            const force = watts / speedMs; 
-            
-            let resistance = (totalWeight * 9.81 * 0.004) + (0.5 * 1.2 * 0.4 * Math.pow(speedMs, 2));
-            const slopeAngle = Math.atan(slopePercent / 100);
-            resistance += (totalWeight * 9.81 * Math.sin(slopeAngle)); // Gravité
-
-            let acc = (force - resistance) / totalWeight;
-            let newSpeed = speedMs + (acc * 0.1); 
-            return Math.max(0, newSpeed * 3.6);
+            let resistance = ((weight + 9) * 9.81 * (isRaining ? 0.006 : 0.004)) + (0.5 * 1.2 * 0.4 * Math.pow(speedMs, 2));
+            resistance += ((weight + 9) * 9.81 * Math.sin(Math.atan(slopePercent / 100)));
+            let acc = ((watts / speedMs) - resistance) / (weight + 9);
+            return Math.max(0, speedMs + (acc * 0.1)) * 3.6;
         }
 
         function updatePhysics() {
             currentSlope = parseFloat(document.getElementById('stage-selector').value);
-            document.getElementById('val-slope').innerText = currentSlope;
-            
             camera.rotation.x = Math.atan(currentSlope / 100) * 0.5;
 
             player.speed = calculateSpeed(player.watts, PLAYER_WEIGHT, player.speed, currentSlope);
-            
-            if(player.speed > 2 || bot.speed > 0) {
-                bot.watts = BOT_WATTS;
-                bot.speed = calculateSpeed(bot.watts, BOT_WEIGHT, bot.speed, currentSlope);
-            } else {
-                bot.watts = 0; bot.speed = 0;
-            }
+            bot.speed = (player.speed > 2 || bot.speed > 0) ? calculateSpeed(bot.watts, BOT_WEIGHT, bot.speed, currentSlope) : 0;
 
             player.dist += (player.speed / 36); 
             bot.dist += (bot.speed / 36);
             gap = bot.dist - player.dist;
 
-            document.getElementById('val-watts').innerText = Math.round(player.watts);
-            document.getElementById('val-speed').innerText = player.speed.toFixed(1);
-            document.getElementById('val-dist').innerText = Math.round(player.dist);
-            document.getElementById('val-bot-speed').innerText = bot.speed.toFixed(1);
+            document.getElementById('val-gap').innerText = (gap >= 0 ? "+" : "") + Math.round(gap);
+            document.getElementById('val-gap').className = gap >= 0 ? "text-2xl font-black text-yellow-400" : "text-2xl font-black text-emerald-400";
             
-            let gapText = (gap >= 0 ? "+" : "") + Math.round(gap);
-            document.getElementById('val-gap').innerText = gapText;
-            document.getElementById('val-gap').className = gap >= 0 ? "text-yellow-400 font-black" : "text-emerald-400 font-black";
+            updateGpsScreen(); // Mise à jour de l'écran 3D
         }
 
         const clock = new THREE.Clock();
@@ -256,49 +213,50 @@
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
             const time = clock.getElapsedTime();
-            const playerSpeedMs = player.speed / 3.6;
             
-            // Défilement du décor
+            // Vitesse de défilement de la route
             sceneObjects.forEach(item => {
-                item.mesh.position.z += playerSpeedMs * delta;
-                
-                // Animation de la foule (Sauts aléatoires)
-                if(item.type === 'fan') {
-                    // Les fans sautent plus haut si tu roules vite !
-                    const excitement = Math.max(0.2, playerSpeedMs * 0.1);
-                    item.mesh.position.y = Math.abs(Math.sin(time * item.jumpSpeed + item.phase)) * excitement;
-                }
-
-                // Reset de position à l'horizon
-                if(item.mesh.position.z > 5) item.mesh.position.z -= (item.offset * (item.total || 1));
+                item.mesh.position.z += (player.speed / 3.6) * delta;
+                if(item.mesh.position.z > 5) item.mesh.position.z -= (item.offset * item.total);
             });
 
-            // Animation du Maillot Jaune
+            // Animation Pluie
+            if(isRaining) {
+                const positions = rainGeo.attributes.position.array;
+                for(let i=0; i<rainCount; i++) {
+                    positions[i*3+1] -= rainVelocities[i] + (player.speed/100); // Tombe plus vite si on roule vite
+                    if(positions[i*3+1] < 0) positions[i*3+1] = 20; // Reset au ciel
+                }
+                rainGeo.attributes.position.needsUpdate = true;
+            }
+
+            // Mouvement du Bot
             botGroup.visible = (gap > -2 && gap < 150);
             if(botGroup.visible) {
                 botGroup.position.z = -gap - 2;
-                if(bot.speed > 0) {
-                    botGroup.position.y = Math.sin(time * 8) * 0.05; // Danseuse
-                }
+                if(bot.speed > 0) botGroup.position.y = Math.sin(time * 8) * 0.05;
             }
             renderer.render(scene, camera);
         }
+        setInterval(updatePhysics, 100); animate();
 
-        setInterval(updatePhysics, 100);
-        animate();
+        // --- CONTROLES ---
+        document.getElementById('btn-weather').addEventListener('click', (e) => {
+            isRaining = !isRaining;
+            rainSystem.visible = isRaining;
+            scene.background = new THREE.Color(isRaining ? 0x223344 : 0x3a5a78); // Assombrit le ciel
+            e.target.innerText = isRaining ? "☀️ Soleil" : "🌧️️ Pluie";
+        });
 
-        // --- ACTIONS ---
         let simInterval;
         document.getElementById('btn-simulate').addEventListener('click', (e) => {
             if(!simInterval) {
-                e.target.innerText = "🛑 Stop";
                 simInterval = setInterval(() => { player.watts = 150 + Math.random() * 60; }, 1000);
             } else {
-                e.target.innerText = "Simuler";
                 clearInterval(simInterval); simInterval = null; player.watts = 0;
             }
         });
-
+        
         document.getElementById('btn-connect').addEventListener('click', async (e) => {
             try {
                 const device = await navigator.bluetooth.requestDevice({ filters: [{ services: ['cycling_power'] }] });
@@ -306,9 +264,8 @@
                 const char = await (await server.getPrimaryService('cycling_power')).getCharacteristic('cycling_power_measurement');
                 await char.startNotifications();
                 e.target.innerText = "PM5 OK"; e.target.classList.replace('bg-blue-600', 'bg-emerald-600');
-                if(simInterval) document.getElementById('btn-simulate').click();
                 char.addEventListener('characteristicvaluechanged', (evt) => { player.watts = evt.target.value.getInt16(2, true); });
-            } catch (err) { alert("Erreur Bluetooth"); }
+            } catch (err) {}
         });
     </script>
 </body>
